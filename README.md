@@ -13,6 +13,7 @@ This repo is the source for container images and the Azure deploy script. Game d
 | Path | Role |
 |------|------|
 | **`valheim/`** | Linux Docker image for a Valheim dedicated server. SteamCMD installs/updates the server on start; world data lives in a mounted volume. |
+| **`windrosev2/`** | Windrose dedicated server (Steam app 4129620) in Docker with Wine + Xvfb. Smoke-tested locally; see [`windrosev2/README.md`](windrosev2/README.md). |
 | **`azure/`** | PowerShell deploy script: build the game image, push to Azure Container Registry (ACR), create an ACI container with Azure Files for saves, expose UDP game port + public IP. |
 
 **Typical flows**
@@ -50,6 +51,16 @@ Connect in-game: **Join by IP** → `127.0.0.1` (same PC) or your machine’s LA
 
 More: [`valheim/README.md`](valheim/README.md) (env vars, logs, updates).
 
+### Local Windrose
+
+```powershell
+cd windrosev2
+copy .env.example .env
+docker compose up --build
+```
+
+First run downloads the dedicated server via SteamCMD (~3 GB). More: [`windrosev2/README.md`](windrosev2/README.md).
+
 ### Valheim on Azure
 
 ```powershell
@@ -71,10 +82,11 @@ More: [`azure/README.md`](azure/README.md) (Key Vault, image tags, world modifie
 ```
 ├── azure/          Deploy script + config example
 ├── valheim/        Local Docker server
-└── docs/           Notes, VM findings, Windrose smoke-test checklist
+├── windrosev2/     Windrose Docker server (Wine)
+└── docs/           Notes, VM findings, smoke-test results
 ```
 
-**Not in this repo (local only):** `.env`, `azure/azure-config.json`, `**/data/` game installs, legacy `windrose/` trees. Windrose container work lives locally under `windrosev2/` until [smoke test](docs/WINDROSE-CONTAINER-SMOKE-TEST.md) passes.
+**Not in this repo (local only):** `.env`, `azure/azure-config.json`, `**/data/` game installs, legacy `windrose/` and `windrose.bak/` trees.
 
 ---
 

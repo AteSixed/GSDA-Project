@@ -1,0 +1,24 @@
+services:
+  windrose:
+    image: windrose-server:latest
+    build:
+      context: .
+      args:
+        WINEHQ_PACKAGE: ${WINEHQ_PACKAGE:-winehq-stable}
+    container_name: windrose
+    restart: unless-stopped
+    shm_size: "1gb"
+    environment:
+      - STEAM_UPDATE_ON_START=${STEAM_UPDATE_ON_START:-1}
+      - STEAMCMD_FORCE_PLATFORM_WINDOWS=${STEAMCMD_FORCE_PLATFORM_WINDOWS:-1}
+      - SERVER_DATA_SUBDIR=${SERVER_DATA_SUBDIR:-windrose-main}
+      - XVFB_DISPLAY=${XVFB_DISPLAY:-:99}
+      - WINEDEBUG=${WINEDEBUG:-}
+      - SERVER_EXE_OVERRIDE=${SERVER_EXE_OVERRIDE:-}
+      - GAME_ROOT_OVERRIDE=${GAME_ROOT_OVERRIDE:-}
+      - "XVFB_RUN_SCREEN=${XVFB_RUN_SCREEN:--screen 0 1024x768x24}"
+    volumes:
+      - windrose_data:/home/steam/windrose
+
+volumes:
+  windrose_data:

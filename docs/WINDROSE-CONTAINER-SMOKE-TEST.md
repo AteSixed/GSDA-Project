@@ -46,4 +46,16 @@ docker compose run --rm windrose cat /home/steam/windrose/windrose-main/logs/las
 
 ## Last attempt (automated)
 
-**2026-05-22:** Smoke test not run — Docker daemon was not available (`dockerDesktopLinuxEngine` pipe missing). Start Docker Desktop and re-run this checklist.
+**2026-05-22 (retry):** **PASS** (local `windrosev2`, Docker 29.4.0)
+
+| Check | Result |
+|-------|--------|
+| Image build | OK (after fixing CRLF in `entrypoint.sh` via `sed` in Dockerfile) |
+| SteamCMD app `4129620` | `Success! App '4129620' fully installed.` |
+| Executable | `WindroseServer-Win64-Shipping.exe` under `serverfiles/R5/Binaries/Win64/` |
+| Launch | Container **Up > 6 minutes**; no immediate exit code 5 |
+| Game log | `R5.log` shows map load, coop backups, server subsystems running |
+
+**Note:** First start failed with exit **127** (`bash\r` shebang) until Dockerfile stripped Windows line endings from `entrypoint.sh` (same pattern as `valheim/Dockerfile`).
+
+**Earlier:** Docker daemon was not available; test not run.
