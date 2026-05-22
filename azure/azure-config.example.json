@@ -1,0 +1,88 @@
+{
+  "subscriptionId": "00000000-0000-0000-0000-000000000000",
+  "resourceGroup": "your-resource-group",
+  "region": "canadacentral",
+  "aci": {
+    "cpu": 2,
+    "memoryInGb": 4
+  },
+  "acr": {
+    "name": "yourregistry",
+    "loginServer": "yourregistry.azurecr.io",
+    "defaultImageTag": "latest"
+  },
+  "storage": {
+    "accountName": "yourstorageaccount",
+    "fileShareName": "gamedata",
+    "fileShareBackups": "gameserverbackups",
+    "fileShareNamePrefix": "valheim-server"
+  },
+  "games": {
+    "valheim": {
+      "enabled": true,
+      "displayName": "Valheim",
+      "installMethod": "steamcmd",
+      "repoFolder": "valheim",
+      "imageRepository": "valheim-server",
+      "mountPath": "/home/steam/valheim",
+      "ports": [
+        {
+          "port": 2456,
+          "protocol": "UDP"
+        }
+      ],
+      "serverOptions": {
+        "required": [
+          "ServerName",
+          "WorldName",
+          "ServerPass"
+        ],
+        "optional": [
+          "CombatModifier",
+          "DeathPenaltyModifier",
+          "ResourcesModifier",
+          "RaidsModifier",
+          "PortalsModifier",
+          "WorldSeed",
+          "PinVersion"
+        ]
+      }
+    },
+    "windrose": {
+      "enabled": true,
+      "displayName": "Windrose",
+      "installMethod": "steamcmd",
+      "steamAppId": "4129620",
+      "steamLogin": "anonymous",
+      "steamValidate": true,
+      "repoFolder": "windrosev2",
+      "imageRepository": "windrose-server",
+      "mountPath": "/home/steam/windrose",
+      "ports": [],
+      "configFiles": [
+        "ServerDescription.json",
+        "WorldDescription.json"
+      ],
+      "serverOptions": {
+        "required": [
+          "ServerName"
+        ],
+        "optional": [
+          "InviteCode",
+          "IsPasswordProtected",
+          "Password",
+          "WorldIslandId",
+          "MaxPlayerCount",
+          "P2pProxyAddress"
+        ]
+      }
+    }
+  },
+  "keyVault": {
+    "name": "your-key-vault-name"
+  },
+  "naming": {
+    "aciNamePrefix": "valheim-aci",
+    "publicIpNamePrefix": "valheim-ip"
+  }
+}

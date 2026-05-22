@@ -1,0 +1,20 @@
+services:
+  valheim:
+    image: valheim-server:latest
+    build: .
+    container_name: valheim
+    restart: unless-stopped
+    environment:
+      - SERVER_NAME=${SERVER_NAME:-Valheim Server}
+      - WORLD_NAME=${WORLD_NAME:-Dedicated}
+      - SERVER_PASS=${SERVER_PASS}
+      - PORT=2456
+      - PUBLIC=${PUBLIC:-1}
+      - AUTO_UPDATE=${AUTO_UPDATE:-1}
+    ports:
+      - "2456:2456/udp"
+      - "2457:2457/udp"
+      - "2458:2458/udp"
+    volumes:
+      # Bind mount: game install + world saves in ./data (accessible when container is stopped)
+      - ./data:/home/steam/valheim

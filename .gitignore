@@ -1,0 +1,37 @@
+# Secrets & local config
+.env
+**/.env
+!.env.example
+!**/.env.example
+
+# Azure local config (commit azure-config.example.json only)
+azure/azure-config.json
+
+# Game/runtime data
+**/data/
+**/data.backup*/
+
+# Backup files and folders
+*.bak
+*.bak/
+**/*.bak
+**/*.bak/
+windrose.bak/
+
+# Legacy Windrose POC (superseded by windrosev2/)
+/windrose/
+
+# Windrose v2 — add to repo after smoke test passes (see docs/WINDROSE-CONTAINER-SMOKE-TEST.md)
+/windrosev2/
+
+# Local perf traces (not part of published server automation)
+/perf testing/
+
+# Scratch
+**/_tmp_*.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,141 @@
+# Azure automation (Valheim & game servers)
+
+This folder holds config and automation for deploying game servers (e.g. Valheim) to Azure Container Instances (ACI).
+
+## Config
+
+Copy the example config and fill in your Azure resource names:
+
+```powershell
+copy azure-config.example.json azure-config.json
+```
+
+**`azure-config.json`** – Local only (gitignored). Resource names and settings (resource group, region, ACR, storage, Key Vault, ACI size). Do not put secrets here; use script parameters or Key Vault.
+
+**`azure-config.example.json`** – Committed template with placeholders.
+
+**ACI size** – Default is 2 CPU, 4 GB memory (good for small Valheim servers). Adjust `aci.cpu` and `aci.memoryInGb` in config if needed.
+
+---
+
+## First-time deployment (game server to ACI)
+
+### Prerequisites
+
+- **Azure CLI** (`az`) – [Install](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli). Log in with `az login` and ensure the correct subscription is selected.
+- **Docker** – So the script can build and push the Valheim image to ACR.
+- **Config** – `azure-config.json` must have ACR, storage, and (optional) Key Vault filled in.
+- **ACR admin user** – So ACI can pull the image. If you get "enable admin first", run:  
+  `az acr update -n <your-acr-name> --admin-enabled true`
+
+### Deploy one game server
+
+From the **`azure`** folder (or pass the path to the script):
+
+```powershell
+cd c:\Users\kk\Documents\Projects\ServerAutomation\azure
+.\deploy-valheim-aci.ps1 -Game "valheim" -UserName "kk" -ServerName "My Valheim Server" -WorldName "Dedicated" -ServerPass "YourPasswordMin5Chars"
+```
+
+- **Game** – `valheim` or `windrose`.
+- **UserName** – Used to auto-generate `InstanceName` as `<game>-<username>-<yyyyMMdd-HHmm>` (with numeric suffix if needed for uniqueness).
+- **ServerName** – Name shown in the server list.
+- **WorldName** – World/save name (required for Valheim).
+- **ServerPass** – Server password (min 5 characters, required for Valheim). Use `-ServerPass` or Key Vault (see below).
+
+Optional:
+
+- **-InstanceName** – Optional override for container group/data folder name. If omitted, script auto-generates one from game + username + timestamp.
+- **-ImageTag** – Deploy using this image tag (default: from config `acr.defaultImageTag` or `latest`). Use to pin or roll back to a specific version.
+- **-CombatModifier** – World combat modifier (e.g. `easy`, `hard`, `veryhard`).
+- **-DeathPenaltyModifier** – Death penalty modifier (e.g. `casual`, `easy`, `hardcore`).
+- **-ResourcesModifier** – Resource rate modifier (e.g. `less`, `more`, `most`).
+- **-RaidsModifier** – Raid frequency modifier (e.g. `none`, `less`, `more`).
+- **-PortalsModifier** – Portal restriction modifier (e.g. `casual`, `hard`, `veryhard`).
+- **-WorldSeed** – World seed string (e.g. `twicer`). Use with a new world name.
+- **-SkipImageBuild** – Skip Docker build/push and use the image already in ACR.
+- **-PinVersion** – Set `AUTO_UPDATE=0` so the container does not run Steam updates; server stays on the game version in the image. Use when deploying with a specific `-ImageTag` after a bad game update.
+- **-KeyVaultSecretName** – Use a Key Vault secret for the password instead of `-ServerPass` (e.g. `valheim-server-1-password`).
+
+Example with Key Vault:
+
+```powershell
+.\deploy-valheim-aci.ps1 -Game "valheim" -UserName "kk" -ServerName "My Server" -WorldName "Dedicated" -KeyVaultSecretName "valheim-server-1-password"
+```
+
+Example Windrose deployment:
+
+```powershell
+.\deploy-valheim-aci.ps1 -Game "windrose" -UserName "kk" -ServerName "My Windrose Server"
+```
+
+When the script finishes, it prints the **public IP**. For Valheim, use **Join by IP** and enter that IP (port 2456 is used automatically).
+
+### Game-specific options in config
+
+`azure-config.json` now has a `games` section (`games.valheim`, `games.windrose`) that defines:
+
+- image repository and source folder (`imageRepository`, `repoFolder`)
+- runtime mount path (`mountPath`)
+- exposed ports (`ports`)
+- server option contract (`serverOptions.required`, `serverOptions.optional`)
+
+Windrose config also includes SteamCMD metadata:
+
+- `steamAppId: 4129620`
+- `steamLogin: anonymous`
+- `steamValidate: true`
+- `configFiles`: `ServerDescription.json`, `WorldDescription.json`
+
+### Ports
+
+The script exposes **UDP 2456** (main game port). Ports 2457/2458 (Steam query) can be added later via a YAML-based deploy if needed.
+
+### Public IP
+
+ACI is created with a **dynamic** public IP. It stays the same while the container group exists and is restarted; it can change if the group is deleted and recreated. For a **static** public IP you’d use a VNet and Application Gateway (or similar); that can be added in a later automation step.
+
+---
+
+## After deployment
+
+- **Logs:** `az container logs --resource-group <resource-group> --name <instance-name> --follow`
+- **Stop:** `az container stop --resource-group <resource-group> --name <instance-name>`
+- **Start:** `az container start --resource-group <resource-group> --name <instance-name>`
+- **Delete:** `az container delete --resource-group <resource-group> --name <instance-name> --yes`
+
+### Version control (lock / roll back)
+
+To handle Valheim updates that break things:
+
+1. **Create a versioned image when things are good**  
+   Build and push with a tag (e.g. date or version), and optionally push `latest`:
+   ```powershell
+   .\deploy-valheim-aci.ps1 -ServerName "Valheim ACI 1" -WorldName "Dedicated" -ServerPass "YourPass" -InstanceName "valheim-aci-1" -ImageTag "20260208"
+   ```
+   (Omit `-SkipImageBuild` so it builds; the script tags the image as `20260208` and pushes it. New deployments can then use `-ImageTag 20260208`.)
+
+2. **Deploy or redeploy with a specific tag**  
+   Use an image tag you know is good:
+   ```powershell
+   .\deploy-valheim-aci.ps1 -ServerName "Valheim ACI 1" -WorldName "Dedicated" -ServerPass "YourPass" -InstanceName "valheim-aci-1" -ImageTag "20260208" -SkipImageBuild
+   ```
+
+3. **Lock at that version (no in-container Steam update)**  
+   Add `-PinVersion` so the container does not run SteamCMD on start; it stays on the game version in the image:
+   ```powershell
+   .\deploy-valheim-aci.ps1 ... -ImageTag "20260208" -PinVersion -SkipImageBuild
+   ```
+
+4. **List tags in ACR**  
+   See which image tags exist:  
+   `az acr repository show-tags --name <acr-name> --repository valheim-server --orderby time_desc -o table`
+
+**Summary:** Build and tag images when Valheim is known-good (e.g. `-ImageTag 20260208`). If a later update breaks things, redeploy with that tag and `-PinVersion` so servers stay on the old game version until you fix or skip the bad update.
+
+---
+
+### File share structure
+
+- **gamedata** – One share; each server uses a **subdirectory** (same name as the instance, e.g. `valheim-aci-1`). Game install and world/autobackups for that server live under `gamedata/<instance-name>/`.
+- **gameserverbackups** – Separate share for backup copies. The deploy script creates a **subdirectory per server** (e.g. `gameserverbackups/valheim-aci-1/`). A separate backup job (e.g. scheduled script or Azure Function) should copy from `gamedata/<instance-name>/` to `gameserverbackups/<instance-name>/` on a schedule. Valheim’s in-game autobackups stay in gamedata; this share is for your own backup copies.
