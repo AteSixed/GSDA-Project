@@ -8,6 +8,9 @@ services:
     container_name: windrose
     restart: unless-stopped
     shm_size: "1gb"
+    ports:
+      - "${DIRECT_CONNECTION_PORT:-3000}:3000/tcp"
+      - "${DIRECT_CONNECTION_PORT:-3000}:3000/udp"
     environment:
       - STEAM_UPDATE_ON_START=${STEAM_UPDATE_ON_START:-1}
       - STEAMCMD_FORCE_PLATFORM_WINDOWS=${STEAMCMD_FORCE_PLATFORM_WINDOWS:-1}

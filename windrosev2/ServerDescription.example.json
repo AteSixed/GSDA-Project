@@ -1,0 +1,21 @@
+{
+	"Version": 1,
+	"DeploymentId": "0.10.0.6.213-f90b3bc1",
+	"ServerDescription_Persistent": {
+		"PersistentServerId": "00000000000000000000000000000000",
+		"InviteCode": "00000000",
+		"IsPasswordProtected": true,
+		"Password": "change-me",
+		"ServerName": "My Windrose Server",
+		"WorldIslandId": "",
+		"MaxPlayerCount": 8,
+		"UserSelectedRegion": "",
+		"P2pProxyAddress": "127.0.0.1",
+		"UseDirectConnection": true,
+		"DirectConnectionServerAddress": "127.0.0.1",
+		"DirectConnectionServerPort": 3000,
+		"DirectConnectionProxyAddress": "0.0.0.0",
+		"AutoLoadLatestBackupIfHasBroken": true,
+		"CanLaunchMultipleServerInstances": false
+	}
+}
