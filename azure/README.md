@@ -92,7 +92,7 @@ Windrose config also includes SteamCMD metadata:
 ### Ports
 
 - **Valheim:** UDP **2456** (via `az container create`).
-- **Windrose:** TCP and UDP **3000** (via container group JSON template; matches local/VM direct connection). Override with `-WindroseDirectPort` and keep `games.windrose.ports` in config aligned.
+- **Windrose:** UDP **3000** on ACI (via container group YAML). Azure does not allow the same port number for both TCP and UDP on one container group ([ACI limitation](https://stackoverflow.com/questions/61053139)); local Docker and a VM can expose both. If direct join fails on ACI, use your VM or test with TCP-only by changing `games.windrose.ports` to TCP.
 
 ### Public IP
 

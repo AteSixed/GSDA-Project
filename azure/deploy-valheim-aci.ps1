@@ -31,6 +31,15 @@ param(
     [int]$WindroseDirectPort = 3000
 )
 
+function Format-YamlScalar {
+    param([string]$Value)
+    if ($null -eq $Value) { return "''" }
+    if ($Value -match '[:#\[\]{}|>&*!%@`,]') {
+        return "'" + ($Value -replace "'", "''") + "'"
+    }
+    return $Value
+}
+
 function New-AciContainerGroupDeployFile {
     param(
         [string]$OutputPath,
@@ -51,84 +60,64 @@ function New-AciContainerGroupDeployFile {
         [string[]]$SecureEnvironmentVariables
     )
 
-    $envList = New-Object System.Collections.Generic.List[object]
+    $yaml = New-Object System.Text.StringBuilder
+    [void]$yaml.AppendLine("location: $(Format-YamlScalar $Location)")
+    [void]$yaml.AppendLine("name: $(Format-YamlScalar $ContainerGroupName)")
+    [void]$yaml.AppendLine("properties:")
+    [void]$yaml.AppendLine("  osType: Linux")
+    [void]$yaml.AppendLine("  restartPolicy: Always")
+    [void]$yaml.AppendLine("  ipAddress:")
+    [void]$yaml.AppendLine("    type: Public")
+    [void]$yaml.AppendLine("    ports:")
+    foreach ($p in $Ports) {
+        [void]$yaml.AppendLine("    - protocol: $($p.protocol)")
+        [void]$yaml.AppendLine("      port: $($p.port)")
+    }
+    [void]$yaml.AppendLine("  imageRegistryCredentials:")
+    [void]$yaml.AppendLine("  - server: $(Format-YamlScalar $RegistryServer)")
+    [void]$yaml.AppendLine("    username: $(Format-YamlScalar $RegistryUsername)")
+    [void]$yaml.AppendLine("    password: $(Format-YamlScalar $RegistryPassword)")
+    [void]$yaml.AppendLine("  volumes:")
+    [void]$yaml.AppendLine("  - name: gamedata")
+    [void]$yaml.AppendLine("    azureFile:")
+    [void]$yaml.AppendLine("      shareName: $(Format-YamlScalar $FileShareName)")
+    [void]$yaml.AppendLine("      storageAccountName: $(Format-YamlScalar $StorageAccountName)")
+    [void]$yaml.AppendLine("      storageAccountKey: $(Format-YamlScalar $StorageAccountKey)")
+    [void]$yaml.AppendLine("  containers:")
+    [void]$yaml.AppendLine("  - name: $(Format-YamlScalar $ContainerGroupName)")
+    [void]$yaml.AppendLine("    properties:")
+    [void]$yaml.AppendLine("      image: $(Format-YamlScalar $Image)")
+    [void]$yaml.AppendLine("      ports:")
+    foreach ($p in $Ports) {
+        [void]$yaml.AppendLine("      - protocol: $($p.protocol)")
+        [void]$yaml.AppendLine("        port: $($p.port)")
+    }
+    [void]$yaml.AppendLine("      resources:")
+    [void]$yaml.AppendLine("        requests:")
+    [void]$yaml.AppendLine("          cpu: $Cpu")
+    [void]$yaml.AppendLine("          memoryInGb: $MemoryInGb")
+    [void]$yaml.AppendLine("      environmentVariables:")
     foreach ($entry in $EnvironmentVariables) {
         $idx = $entry.IndexOf("=")
         if ($idx -lt 1) { continue }
-        $envList.Add(@{
-            name  = $entry.Substring(0, $idx)
-            value = $entry.Substring($idx + 1)
-        })
+        $name = $entry.Substring(0, $idx)
+        $value = $entry.Substring($idx + 1)
+        [void]$yaml.AppendLine("      - name: $(Format-YamlScalar $name)")
+        [void]$yaml.AppendLine("        value: $(Format-YamlScalar $value)")
     }
     foreach ($entry in $SecureEnvironmentVariables) {
         $idx = $entry.IndexOf("=")
         if ($idx -lt 1) { continue }
-        $envList.Add(@{
-            name        = $entry.Substring(0, $idx)
-            secureValue = $entry.Substring($idx + 1)
-        })
+        $name = $entry.Substring(0, $idx)
+        $value = $entry.Substring($idx + 1)
+        [void]$yaml.AppendLine("      - name: $(Format-YamlScalar $name)")
+        [void]$yaml.AppendLine("        secureValue: $(Format-YamlScalar $value)")
     }
+    [void]$yaml.AppendLine("      volumeMounts:")
+    [void]$yaml.AppendLine("      - name: gamedata")
+    [void]$yaml.AppendLine("        mountPath: $(Format-YamlScalar $MountPath)")
 
-    $portList = @()
-    foreach ($p in $Ports) {
-        $portList += @{
-            port     = [int]$p.port
-            protocol = [string]$p.protocol
-        }
-    }
-
-    $group = [ordered]@{
-        location   = $Location
-        name       = $ContainerGroupName
-        properties = [ordered]@{
-            osType        = "Linux"
-            restartPolicy = "Always"
-            ipAddress     = [ordered]@{
-                type  = "Public"
-                ports = $portList
-            }
-            imageRegistryCredentials = @(
-                [ordered]@{
-                    server   = $RegistryServer
-                    username = $RegistryUsername
-                    password = $RegistryPassword
-                }
-            )
-            volumes    = @(
-                [ordered]@{
-                    name      = "gamedata"
-                    azureFile = [ordered]@{
-                        shareName          = $FileShareName
-                        storageAccountName = $StorageAccountName
-                        storageAccountKey  = $StorageAccountKey
-                    }
-                }
-            )
-            containers = @(
-                [ordered]@{
-                    name       = $ContainerGroupName
-                    properties = [ordered]@{
-                        image                  = $Image
-                        resources              = [ordered]@{
-                            requests = [ordered]@{
-                                cpu         = $Cpu
-                                memoryInGb  = $MemoryInGb
-                            }
-                        }
-                        environmentVariables   = $envList.ToArray()
-                        volumeMounts           = @(
-                            [ordered]@{
-                                name      = "gamedata"
-                                mountPath = $MountPath
-                            }
-                        )
-                    }
-                }
-            )
-        }
-    }
-
-    ($group | ConvertTo-Json -Depth 12) | Set-Content -Path $OutputPath -Encoding utf8
+    [System.IO.File]::WriteAllText($OutputPath, $yaml.ToString())
 }
 
 $ErrorActionPreference = "Stop"
@@ -315,7 +304,8 @@ if ($Game -eq "valheim") {
     if ($WorldSeed)            { $envVars += "WORLDSEED=$WorldSeed" }
 } elseif ($Game -eq "windrose") {
     $envVars += "STEAM_UPDATE_ON_START=$autoUpdate"
-    $envVars += "STEAMCMD_FORCE_PLATFORM_WINDOWS=1"
+    # Force-platform flag often causes "Missing configuration" for 4129620 on Linux SteamCMD.
+    $envVars += "STEAMCMD_FORCE_PLATFORM_WINDOWS=0"
     $envVars += "XVFB_DISPLAY=:99"
     $envVars += "WINDROSE_DIRECT_PORT=$WindroseDirectPort"
     $envVars += "WINDROSE_ENSURE_DIRECT_CONFIG=0"
@@ -376,8 +366,15 @@ if ($ports.Count -gt 0) {
 $containerCreateArgs += @("--location", $region)
 
 if ($Game -eq "windrose") {
-    $aciTemplate = Join-Path $env:TEMP "aci-$aciName-$(Get-Date -Format 'yyyyMMddHHmmss').json"
-    Write-Host "Creating Windrose ACI via container group template (TCP+UDP port $WindroseDirectPort)"
+    $aciTemplate = Join-Path $env:TEMP "aci-$aciName-$(Get-Date -Format 'yyyyMMddHHmmss').yaml"
+    $portProtocols = ($ports | ForEach-Object { $_.protocol }) -join ","
+    Write-Host "Creating Windrose ACI via container group YAML (port $WindroseDirectPort, protocol(s): $portProtocols)"
+    if (($ports | Measure-Object).Count -gt 1) {
+        $dupPorts = $ports | Group-Object port | Where-Object { $_.Count -gt 1 }
+        if ($dupPorts) {
+            Write-Error "ACI does not allow duplicate port numbers (e.g. TCP 3000 and UDP 3000). Use one protocol in games.windrose.ports or deploy Windrose on a VM."
+        }
+    }
     New-AciContainerGroupDeployFile `
         -OutputPath $aciTemplate `
         -ContainerGroupName $aciName `
@@ -396,18 +393,28 @@ if ($Game -eq "windrose") {
         -EnvironmentVariables $envVars `
         -SecureEnvironmentVariables $secureEnvVars
     az container create --resource-group $resourceGroup --file $aciTemplate
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "ACI template written to: $aciTemplate" -ForegroundColor Yellow
+        Write-Error "Windrose ACI create failed (see Azure CLI output above)."
+    }
     Remove-Item -Path $aciTemplate -Force -ErrorAction SilentlyContinue
 } else {
     az @containerCreateArgs
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "ACI create failed (see Azure CLI output above)."
+    }
 }
 
-$ip = (az container show --resource-group $resourceGroup --name $aciName --query ipAddress.ip -o tsv)
+$ip = (az container show --resource-group $resourceGroup --name $aciName --query ipAddress.ip -o tsv 2>$null)
+if (-not $ip) {
+    Write-Error "Container group '$aciName' was not created or has no public IP."
+}
 $directPort = if ($Game -eq "windrose") { $WindroseDirectPort } else { if ($ports.Count -gt 0) { $ports[0].port } else { "" } }
 Write-Host ""
 Write-Host "=== $gameDisplayName server deployed ===" -ForegroundColor Green
 Write-Host "Public IP: $ip"
 if ($Game -eq "windrose") {
-    Write-Host "Connect: Direct IP -> $ip port $directPort (TCP+UDP), password from -ServerPass / Key Vault"
+    Write-Host "Connect: Direct IP -> $ip port $directPort, password from -ServerPass / Key Vault"
     Write-Host "First start may take 15-30+ minutes (SteamCMD download + Wine prefix). Check: az container logs -g $resourceGroup -n $aciName --follow"
 } elseif ($ports.Count -gt 0) {
     Write-Host "Connect in-game: Join by IP -> $ip (port $directPort)"

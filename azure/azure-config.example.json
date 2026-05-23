@@ -63,7 +63,6 @@
         "memoryInGb": 8
       },
       "ports": [
-        { "port": 3000, "protocol": "TCP" },
         { "port": 3000, "protocol": "UDP" }
       ],
       "configFiles": [
