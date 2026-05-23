@@ -52,10 +52,15 @@ dump_debug_artifacts() {
 }
 
 SERVER_EXE="$(find_server_exe || true)"
-if [ -z "${SERVER_EXE}" ] || [ "${STEAM_UPDATE_ON_START:-1}" = "1" ]; then
+if [ -z "${SERVER_EXE}" ]; then
   steamcmd_update_app
-  SERVER_EXE="$(find_server_exe || true)"
+elif [ "${STEAM_UPDATE_ON_START:-0}" = "1" ]; then
+  echo "STEAM_UPDATE_ON_START=1: updating existing install via SteamCMD..."
+  steamcmd_update_app
+else
+  echo "Using existing serverfiles install (STEAM_UPDATE_ON_START=0)."
 fi
+SERVER_EXE="$(find_server_exe || true)"
 
 if [ -z "${SERVER_EXE}" ]; then
   echo "ERROR: Could not find Windrose executable under ${INSTALL_DIR}"
@@ -114,7 +119,11 @@ EOF
 ensure_server_description
 
 GAME_ROOT="${GAME_ROOT_OVERRIDE:-${INSTALL_DIR}}"
-export WINEPREFIX="${WINEPREFIX:-${INSTANCE_ROOT}/wineprefix}"
+if [ "${WINEPREFIX_USE_CONTAINER_TMP:-0}" = "1" ]; then
+  export WINEPREFIX="/tmp/windrose-wine-${SERVER_DATA_SUBDIR}"
+else
+  export WINEPREFIX="${WINEPREFIX:-${INSTANCE_ROOT}/wineprefix}"
+fi
 export WINEARCH="${WINEARCH:-win64}"
 export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:-mscoree,mshtml=;winedbg.exe=d}"
 XVFB_RUN_SCREEN="${XVFB_RUN_SCREEN:--screen 0 1024x768x24}"

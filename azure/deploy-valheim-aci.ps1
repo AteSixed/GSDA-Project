@@ -303,7 +303,10 @@ if ($Game -eq "valheim") {
     if ($PortalsModifier)      { $envVars += "PORTALS_MODIFIER=$PortalsModifier" }
     if ($WorldSeed)            { $envVars += "WORLDSEED=$WorldSeed" }
 } elseif ($Game -eq "windrose") {
-    $envVars += "STEAM_UPDATE_ON_START=$autoUpdate"
+    # Skip SteamCMD when serverfiles already exist on the file share (avoids re-download on ACI restart).
+    $envVars += "STEAM_UPDATE_ON_START=0"
+    # Azure Files cannot store Wine prefix ownership reliably; use container /tmp.
+    $envVars += "WINEPREFIX_USE_CONTAINER_TMP=1"
     # Force-platform flag often causes "Missing configuration" for 4129620 on Linux SteamCMD.
     $envVars += "STEAMCMD_FORCE_PLATFORM_WINDOWS=0"
     $envVars += "XVFB_DISPLAY=:99"
