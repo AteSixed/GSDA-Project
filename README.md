@@ -47,7 +47,7 @@ copy .env.example .env
 docker compose up --build
 ```
 
-Connect in-game: **Join by IP** → `127.0.0.1` (same PC) or your machine’s LAN IP. UDP ports **2456–2458**.
+Connect in-game: **Join by IP** → `127.0.0.1` (same PC) or `<lanIp>`. UDP ports **2456–2458**.
 
 More: [`valheim/README.md`](valheim/README.md) (env vars, logs, updates).
 
@@ -68,18 +68,19 @@ cd azure
 copy azure-config.example.json azure-config.json
 # Edit azure-config.json — subscription, resource group, ACR, storage, etc.
 az login
-.\deploy-valheim-aci.ps1 -Game valheim -UserName you -ServerName "My Server" -WorldName Dedicated -ServerPass "YourPasswordMin5"
+.\deploy-valheim-aci.ps1 -Game valheim -UserName "<userName>" -ServerName "<serverName>" -WorldName "<worldName>" -ServerPass "<serverPass>"
 ```
 
-The script prints a **public IP** when finished; join with that IP (port 2456). Instance name defaults to `valheim-<user>-<timestamp>` unless you pass `-InstanceName`.
+The script prints a **public IP** when finished; join with that IP (port 2456). Instance name defaults to `valheim-<userName>-<timestamp>` unless you pass `-InstanceName`.
 
 ### Windrose on Azure
 
 ```powershell
-.\deploy-valheim-aci.ps1 -Game windrose -UserName you -ServerName "My Windrose Server" -ServerPass "YourPassword"
+cd azure
+.\deploy-valheim-aci.ps1 -Game windrose -UserName "<userName>" -ServerName "<serverName>" -ServerPass "<serverPass>"
 ```
 
-Join with **direct IP** at public IP **port 3000** (TCP+UDP) and your password — same model as the working VM. First start can take a long time while SteamCMD installs inside ACI.
+Join with **direct IP** at `<publicIp>` **port 3000** (UDP on ACI) and `<serverPass>` — same model as a direct-connection VM. First start can take a long time while SteamCMD installs inside ACI.
 
 More: [`azure/README.md`](azure/README.md) (Key Vault, image tags, world modifiers, stop/start/logs).
 

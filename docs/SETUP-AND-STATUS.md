@@ -1,6 +1,6 @@
 # Setup and status (as of 2026-04-20)
 
-This document records what has been configured in **ServerAutomation**, what was tried for **Windrose** locally, how **Valheim** is deployed and updated in Azure, and the **Bazzite (Sherman)** KVM hypervisor baseline. Paths are relative to the repo root unless stated otherwise.
+This document records what has been configured in **ServerAutomation**, what was tried for **Windrose** locally, how **Valheim** is deployed and updated in Azure, and the **Bazzite (`<hypervisorHost>`)** KVM hypervisor baseline. Paths are relative to the repo root unless stated otherwise.
 
 ---
 
@@ -62,7 +62,7 @@ File: `windrose/.env` (not committed if gitignored — verify locally)
 
 This is separate from the Docker POC above. These checks were run against the installed dedicated server files under:
 
-`C:\Program Files (x86)\Steam\steamapps\common\Windrose Dedicated Server`
+`%ProgramFiles(x86)%\Steam\steamapps\common\Windrose Dedicated Server`
 
 #### Binary and launch artifacts
 
@@ -239,7 +239,7 @@ See **`azure/README.md`** for full parameter list and examples.
 
 ---
 
-## 4. Bazzite hypervisor host **Sherman** (Linux KVM)
+## 4. Bazzite hypervisor host `<hypervisorHost>` (Linux KVM)
 
 Hardware is **AMD** (CPU flags include **`svm`**, **`npt`**).
 
@@ -266,13 +266,13 @@ Hardware is **AMD** (CPU flags include **`svm`**, **`npt`**).
 
 ### 4.4 User / polkit (password prompts for `virsh`)
 
-- **`libvirt` group:** `getent group libvirt` showed GID **961** but group was **not** in local `/etc/group`, so **`gpasswd` / `usermod -aG libvirt`** could not attach user `kk`
-- **User groups:** `kk` is in **`wheel`**
+- **`libvirt` group:** `getent group libvirt` showed GID **961** but group was **not** in local `/etc/group`, so **`gpasswd` / `usermod -aG libvirt`** could not attach user `<linuxUser>`
+- **User groups:** `<linuxUser>` is in **`wheel`**
 - **Fix applied:** polkit rule **`/etc/polkit-1/rules.d/50-libvirt-wheel.rules`** — allow **`org.libvirt.unix.manage`** for **`wheel`** → **`polkit.Result.YES`**
 - **`sudo systemctl restart polkit`**
 - **Verified:** `virsh -c qemu:///system net-list --all` runs **without** password prompt and lists **`default`**
 
-### 4.5 Remote desktop (RDP) on Sherman
+### 4.5 Remote desktop (RDP) on `<hypervisorHost>`
 
 - **Stack:** RDP is **KDE KRDP**, not **xrdp** or **GNOME Remote Desktop**. The listener is **`krdpserver`** (Plasma **System Settings → Sharing → Remote Desktop**).
 - **Verify:** `ss -lntp | grep 3389` — expect `users:(("krdpserver",pid=...,fd=...))` when RDP is active.
@@ -287,9 +287,9 @@ For consistent CLI targeting of system libvirt:
 export LIBVIRT_DEFAULT_URI=qemu:///system
 ```
 
-(Add to shell profile on Sherman if desired.)
+(Add to shell profile on `<hypervisorHost>` if desired.)
 
-### 4.7 Current Sherman status (summary)
+### 4.7 Current `<hypervisorHost>` status (summary)
 
 | Item | Status |
 |------|--------|
@@ -303,7 +303,7 @@ export LIBVIRT_DEFAULT_URI=qemu:///system
 ### 4.8 Next steps (not done yet)
 
 - Build **template** guest (Windows or Linux) for game servers
-- Decide automation: **SSH from dev PC** vs scripts **on Sherman**
+- Decide automation: **SSH from dev PC** vs scripts **on `<hypervisorHost>`**
 - Optional: document **clone/snapshot** workflow alongside existing `azure/deploy-valheim-aci.ps1` pattern
 
 ---
@@ -330,10 +330,10 @@ docker compose up
 
 ```powershell
 cd azure
-.\deploy-valheim-aci.ps1 -Game "valheim" -UserName "kk" -ServerName "..." -WorldName "..." -ServerPass "..."
+.\deploy-valheim-aci.ps1 -Game "valheim" -UserName "<userName>" -ServerName "<serverName>" -WorldName "<worldName>" -ServerPass "<serverPass>"
 ```
 
-### Sherman (libvirt sanity)
+### `<hypervisorHost>` (libvirt sanity)
 
 ```bash
 virsh -c qemu:///system net-list --all

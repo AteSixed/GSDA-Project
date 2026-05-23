@@ -6,7 +6,7 @@
 		"InviteCode": "00000000",
 		"IsPasswordProtected": true,
 		"Password": "change-me",
-		"ServerName": "My Windrose Server",
+		"ServerName": "<serverName>",
 		"WorldIslandId": "",
 		"MaxPlayerCount": 8,
 		"UserSelectedRegion": "",

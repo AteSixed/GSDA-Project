@@ -29,7 +29,7 @@ Run a Valheim dedicated server in a Linux container. Works with Docker Desktop o
 
 4. **Connect**
    - Same PC: In Valheim, Join Game → Join by IP → `127.0.0.1` or `localhost`
-   - LAN: Use this machine’s local IP (e.g. `192.168.1.x`) and ensure UDP ports 2456–2458 are allowed in Windows Firewall if needed.
+   - LAN: Use this machine’s local IP (e.g. `<lanIp>`) and ensure UDP ports 2456–2458 are allowed in Windows Firewall if needed.
 
 ## Data and ports
 
@@ -46,9 +46,9 @@ Run a Valheim dedicated server in a Linux container. Works with Docker Desktop o
 
 | Variable     | Default           | Description                          |
 |-------------|-------------------|--------------------------------------|
-| SERVER_NAME | Valheim Server    | Name shown in the server list        |
-| WORLD_NAME  | Dedicated         | World/save name                      |
-| SERVER_PASS | (required)        | Server password (min 5 characters)   |
+| SERVER_NAME | `<serverName>`    | Name shown in the server list        |
+| WORLD_NAME  | `<worldName>`     | World/save name                      |
+| SERVER_PASS | `<serverPass>`    | Server password (min 5 characters)   |
 | PORT        | 2456              | Game port                            |
 | PUBLIC      | 1                 | 1 = listed in browser, 0 = private   |
 | AUTO_UPDATE | 1                 | 1 = update server on start if needed |

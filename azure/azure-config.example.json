@@ -1,18 +1,18 @@
 {
   "subscriptionId": "00000000-0000-0000-0000-000000000000",
-  "resourceGroup": "your-resource-group",
-  "region": "canadacentral",
+  "resourceGroup": "<resourceGroup>",
+  "region": "<azureRegion>",
   "aci": {
     "cpu": 2,
     "memoryInGb": 4
   },
   "acr": {
-    "name": "yourregistry",
-    "loginServer": "yourregistry.azurecr.io",
+    "name": "<acrName>",
+    "loginServer": "<acrName>.azurecr.io",
     "defaultImageTag": "latest"
   },
   "storage": {
-    "accountName": "yourstorageaccount",
+    "accountName": "<storageAccountName>",
     "fileShareName": "gamedata",
     "fileShareBackups": "gameserverbackups",
     "fileShareNamePrefix": "valheim-server"
@@ -86,10 +86,10 @@
     }
   },
   "keyVault": {
-    "name": "your-key-vault-name"
+    "name": "<keyVaultName>"
   },
   "naming": {
-    "aciNamePrefix": "valheim-aci",
-    "publicIpNamePrefix": "valheim-ip"
+    "aciNamePrefix": "<aciNamePrefix>",
+    "publicIpNamePrefix": "<publicIpNamePrefix>"
   }
 }

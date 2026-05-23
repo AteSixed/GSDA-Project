@@ -1,9 +1,9 @@
 # Deploy game servers (Valheim/Windrose) to Azure Container Instances (ACI).
 # Prerequisites: Azure CLI (az), Docker, logged in to Azure (az login).
-# Usage: .\deploy-valheim-aci.ps1 -Game "valheim" -UserName "kk" -ServerName "My Server" -WorldName "Dedicated" -ServerPass "YourPassword"
-# Windrose: .\deploy-valheim-aci.ps1 -Game "windrose" -UserName "kk" -ServerName "My Windrose Server" -ServerPass "YourPassword" [-WindroseDirectPort 3000]
-# Optional: -KeyVaultSecretName "valheim-server-1-password" to use Key Vault instead of -ServerPass
-# Versioning: use -ImageTag to deploy a specific image (e.g. 20260208). Use -PinVersion with a tag to disable in-container Steam updates (lock at that version).
+# Usage: .\deploy-valheim-aci.ps1 -Game "valheim" -UserName "<userName>" -ServerName "<serverName>" -WorldName "<worldName>" -ServerPass "<serverPass>"
+# Windrose: .\deploy-valheim-aci.ps1 -Game "windrose" -UserName "<userName>" -ServerName "<serverName>" -ServerPass "<serverPass>" [-WindroseDirectPort 3000]
+# Optional: -KeyVaultSecretName "<keyVaultSecretName>" to use Key Vault instead of -ServerPass
+# Versioning: use -ImageTag to deploy a specific image (e.g. <imageTag>). Use -PinVersion with a tag to disable in-container Steam updates (lock at that version).
 # World modifiers: optional -CombatModifier, -DeathPenaltyModifier, -ResourcesModifier, -RaidsModifier, -PortalsModifier, -WorldSeed map to Valheim's -modifier/-worldseed flags.
 
 param(

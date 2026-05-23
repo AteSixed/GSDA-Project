@@ -1,8 +1,8 @@
 # Windrose Windows VM findings for Linux container POC
 
 Date: 2026-04-20  
-Host: Sherman (Bazzite, KVM/libvirt)  
-Guest: `windroseVM-Win25` (Windows Server 2025)
+Host: `<hypervisorHost>` (Bazzite, KVM/libvirt)  
+Guest: `<vmDomainName>` (Windows Server 2025)
 
 This document captures the successful Windows VM baseline and the key lessons from failed Linux container attempts so future Proton/Wine container experiments can be faster and more deterministic.
 
@@ -25,8 +25,8 @@ This document captures the successful Windows VM baseline and the key lessons fr
 - Connectivity validation expanded: a user from a remote network successfully connected, indicating routing and external network reachability are functioning.
 
 Current snapshots:
-- `post-update-clean`
-- `post-install-updated`
+- `<snapshotName>`
+- `<snapshotName>`
 
 ---
 
@@ -34,9 +34,9 @@ Current snapshots:
 
 ### Storage
 
-- Original pool target under `/run/media/kk/Games Fast (500G)` caused qemu access failures.
+- Original pool target under `/run/media/<linuxUser>/<volumeLabel>` caused qemu access failures.
 - Root causes:
-  - user-session mount path (`/run/media/kk/...`) not stable for system services
+  - user-session mount path (`/run/media/<linuxUser>/...`) not stable for system services
   - NTFS not ideal for libvirt VM image workloads on Linux
   - path traversal and SELinux labeling friction
 
@@ -49,14 +49,14 @@ Final storage layout that worked:
 
 - libvirt `default` NAT network (`192.168.122.0/24`) worked host->guest but not LAN client->guest.
 - Correct long-term fix: create Linux bridge `br0` and attach VM NIC to bridge.
-- Host now carries LAN IP on `br0`; VM gets direct LAN IP (`192.168.40.x`) and is directly reachable for RDP.
+- Host now carries LAN IP on `br0`; VM gets direct LAN IP (`<vmLanIp>`) and is directly reachable for RDP.
 
 ---
 
 ## 3) Windows VM profile (baseline)
 
 Domain name:
-- `windroseVM-Win25`
+- `<vmDomainName>`
 
 Create profile used:
 - 8 GB RAM
@@ -165,7 +165,7 @@ Interpretation for this project:
 ### 5.1 Default Windrose install layout (Windows VM reference)
 
 Observed path:
-- `C:\Program Files (x86)\Steam\steamapps\common\Windrose Dedicated Server`
+- `%ProgramFiles(x86)%\Steam\steamapps\common\Windrose Dedicated Server`
 
 Top-level contents observed:
 - directories:
@@ -227,7 +227,7 @@ Observed from initial successful boot log:
 - command line:
   - `-log`
 - base directory:
-  - `C:/Program Files (x86)/Steam/steamapps/common/Windrose Dedicated Server/R5/Binaries/Win64/`
+  - `<steamInstallRoot>/Windrose Dedicated Server/R5/Binaries/Win64/`
 - engine:
   - `UE 5.6.1-0+UE5` (shipping build)
 - compiler/runtime hint:
@@ -306,7 +306,7 @@ Container implication:
 
 From the healthy Windows startup:
 - root:
-  - `C:/Program Files (x86)/Steam/steamapps/common/Windrose Dedicated Server/R5/`
+  - `<steamInstallRoot>/Windrose Dedicated Server/R5/`
 - logs:
   - `R5/Saved/Logs`
 - server metadata:
@@ -452,7 +452,7 @@ Success criteria:
 
 ## 7) Recommended immediate next actions
 
-1. Keep `windroseVM-Win25` as gold baseline until Linux container path is proven.
+1. Keep `<vmDomainName>` as gold baseline until Linux container path is proven.
 2. Add a new snapshot after Windrose server configuration is finalized (for quick rollback).
 3. Capture a one-page runtime inventory from the VM (ports, paths, launch args, prerequisites, and observed latency/load-time behavior).
 4. Re-run container POC using the matrix in section 6 and compare against the VM baseline.
@@ -463,7 +463,7 @@ Success criteria:
 
 Start VM:
 ```bash
-sudo virsh start windroseVM-Win25
+sudo virsh start <vmDomainName>
 ```
 
 Check VM state:
@@ -473,10 +473,10 @@ sudo virsh list --all
 
 Create snapshot (while VM shut off):
 ```bash
-sudo virsh snapshot-create-as windroseVM-Win25 "snapshot-name" "notes" --disk-only --atomic
+sudo virsh snapshot-create-as <vmDomainName> "snapshot-name" "notes" --disk-only --atomic
 ```
 
 List snapshots:
 ```bash
-sudo virsh snapshot-list windroseVM-Win25
+sudo virsh snapshot-list <vmDomainName>
 ```
