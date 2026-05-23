@@ -58,14 +58,22 @@
       "repoFolder": "windrosev2",
       "imageRepository": "windrose-server",
       "mountPath": "/home/steam/windrose",
-      "ports": [],
+      "aci": {
+        "cpu": 2,
+        "memoryInGb": 8
+      },
+      "ports": [
+        { "port": 3000, "protocol": "TCP" },
+        { "port": 3000, "protocol": "UDP" }
+      ],
       "configFiles": [
         "ServerDescription.json",
         "WorldDescription.json"
       ],
       "serverOptions": {
         "required": [
-          "ServerName"
+          "ServerName",
+          "ServerPass"
         ],
         "optional": [
           "InviteCode",

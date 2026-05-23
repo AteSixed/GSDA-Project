@@ -73,6 +73,14 @@ az login
 
 The script prints a **public IP** when finished; join with that IP (port 2456). Instance name defaults to `valheim-<user>-<timestamp>` unless you pass `-InstanceName`.
 
+### Windrose on Azure
+
+```powershell
+.\deploy-valheim-aci.ps1 -Game windrose -UserName you -ServerName "My Windrose Server" -ServerPass "YourPassword"
+```
+
+Join with **direct IP** at public IP **port 3000** (TCP+UDP) and your password — same model as the working VM. First start can take a long time while SteamCMD installs inside ACI.
+
 More: [`azure/README.md`](azure/README.md) (Key Vault, image tags, world modifiers, stop/start/logs).
 
 ---

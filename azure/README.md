@@ -63,13 +63,15 @@ Example with Key Vault:
 .\deploy-valheim-aci.ps1 -Game "valheim" -UserName "kk" -ServerName "My Server" -WorldName "Dedicated" -KeyVaultSecretName "valheim-server-1-password"
 ```
 
-Example Windrose deployment:
+Example Windrose deployment (direct IP + password, port 3000 TCP/UDP):
 
 ```powershell
-.\deploy-valheim-aci.ps1 -Game "windrose" -UserName "kk" -ServerName "My Windrose Server"
+.\deploy-valheim-aci.ps1 -Game "windrose" -UserName "kk" -ServerName "My Windrose Server" -ServerPass "YourPassword" -WindroseDirectPort 3000
 ```
 
-When the script finishes, it prints the **public IP**. For Valheim, use **Join by IP** and enter that IP (port 2456 is used automatically).
+When the script finishes, it prints the **public IP**. Connect with **direct IP** (not invite code): `<public-ip>:3000` and the password from `-ServerPass`. First boot installs the game via SteamCMD inside the container (can take 15–30+ minutes); watch logs with `az container logs`.
+
+Windrose uses **8 GB** memory by default in config (`games.windrose.aci.memoryInGb`) and deploys via a container-group template so **TCP and UDP** on the same port are exposed (required for direct connection).
 
 ### Game-specific options in config
 
@@ -89,7 +91,8 @@ Windrose config also includes SteamCMD metadata:
 
 ### Ports
 
-The script exposes **UDP 2456** (main game port). Ports 2457/2458 (Steam query) can be added later via a YAML-based deploy if needed.
+- **Valheim:** UDP **2456** (via `az container create`).
+- **Windrose:** TCP and UDP **3000** (via container group JSON template; matches local/VM direct connection). Override with `-WindroseDirectPort` and keep `games.windrose.ports` in config aligned.
 
 ### Public IP
 

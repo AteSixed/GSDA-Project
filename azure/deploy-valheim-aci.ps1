@@ -1,6 +1,7 @@
 # Deploy game servers (Valheim/Windrose) to Azure Container Instances (ACI).
 # Prerequisites: Azure CLI (az), Docker, logged in to Azure (az login).
 # Usage: .\deploy-valheim-aci.ps1 -Game "valheim" -UserName "kk" -ServerName "My Server" -WorldName "Dedicated" -ServerPass "YourPassword"
+# Windrose: .\deploy-valheim-aci.ps1 -Game "windrose" -UserName "kk" -ServerName "My Windrose Server" -ServerPass "YourPassword" [-WindroseDirectPort 3000]
 # Optional: -KeyVaultSecretName "valheim-server-1-password" to use Key Vault instead of -ServerPass
 # Versioning: use -ImageTag to deploy a specific image (e.g. 20260208). Use -PinVersion with a tag to disable in-container Steam updates (lock at that version).
 # World modifiers: optional -CombatModifier, -DeathPenaltyModifier, -ResourcesModifier, -RaidsModifier, -PortalsModifier, -WorldSeed map to Valheim's -modifier/-worldseed flags.
@@ -26,8 +27,109 @@ param(
     [string]$WorldSeed = "",
     [string]$ImageTag = "",
     [switch]$SkipImageBuild,
-    [switch]$PinVersion
+    [switch]$PinVersion,
+    [int]$WindroseDirectPort = 3000
 )
+
+function New-AciContainerGroupDeployFile {
+    param(
+        [string]$OutputPath,
+        [string]$ContainerGroupName,
+        [string]$Location,
+        [string]$Image,
+        [decimal]$Cpu,
+        [decimal]$MemoryInGb,
+        [string]$StorageAccountName,
+        [string]$StorageAccountKey,
+        [string]$FileShareName,
+        [string]$MountPath,
+        [string]$RegistryServer,
+        [string]$RegistryUsername,
+        [string]$RegistryPassword,
+        [array]$Ports,
+        [string[]]$EnvironmentVariables,
+        [string[]]$SecureEnvironmentVariables
+    )
+
+    $envList = New-Object System.Collections.Generic.List[object]
+    foreach ($entry in $EnvironmentVariables) {
+        $idx = $entry.IndexOf("=")
+        if ($idx -lt 1) { continue }
+        $envList.Add(@{
+            name  = $entry.Substring(0, $idx)
+            value = $entry.Substring($idx + 1)
+        })
+    }
+    foreach ($entry in $SecureEnvironmentVariables) {
+        $idx = $entry.IndexOf("=")
+        if ($idx -lt 1) { continue }
+        $envList.Add(@{
+            name        = $entry.Substring(0, $idx)
+            secureValue = $entry.Substring($idx + 1)
+        })
+    }
+
+    $portList = @()
+    foreach ($p in $Ports) {
+        $portList += @{
+            port     = [int]$p.port
+            protocol = [string]$p.protocol
+        }
+    }
+
+    $group = [ordered]@{
+        location   = $Location
+        name       = $ContainerGroupName
+        properties = [ordered]@{
+            osType        = "Linux"
+            restartPolicy = "Always"
+            ipAddress     = [ordered]@{
+                type  = "Public"
+                ports = $portList
+            }
+            imageRegistryCredentials = @(
+                [ordered]@{
+                    server   = $RegistryServer
+                    username = $RegistryUsername
+                    password = $RegistryPassword
+                }
+            )
+            volumes    = @(
+                [ordered]@{
+                    name      = "gamedata"
+                    azureFile = [ordered]@{
+                        shareName          = $FileShareName
+                        storageAccountName = $StorageAccountName
+                        storageAccountKey  = $StorageAccountKey
+                    }
+                }
+            )
+            containers = @(
+                [ordered]@{
+                    name       = $ContainerGroupName
+                    properties = [ordered]@{
+                        image                  = $Image
+                        resources              = [ordered]@{
+                            requests = [ordered]@{
+                                cpu         = $Cpu
+                                memoryInGb  = $MemoryInGb
+                            }
+                        }
+                        environmentVariables   = $envList.ToArray()
+                        volumeMounts           = @(
+                            [ordered]@{
+                                name      = "gamedata"
+                                mountPath = $MountPath
+                            }
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    ($group | ConvertTo-Json -Depth 12) | Set-Content -Path $OutputPath -Encoding utf8
+}
 
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -72,6 +174,11 @@ if (-not $imageRepository) { Write-Error "games.$Game.imageRepository is require
 if (-not $mountPath) { Write-Error "games.$Game.mountPath is required." }
 if (-not $repoFolder) { Write-Error "games.$Game.repoFolder is required." }
 
+if ($gameConfig.aci) {
+    if ($gameConfig.aci.cpu) { $cpu = $gameConfig.aci.cpu }
+    if ($gameConfig.aci.memoryInGb) { $memoryInGb = $gameConfig.aci.memoryInGb }
+}
+
 # Azure Container Group name constraints (1-63 chars, lowercase letters, numbers, hyphens).
 $maxInstanceNameLength = 63
 
@@ -103,6 +210,18 @@ if ($Game -eq "valheim") {
     }
     if (-not $ServerPass -or $ServerPass.Length -lt 5) {
         Write-Error "SERVER_PASS must be at least 5 characters for valheim. Use -ServerPass or -KeyVaultSecretName."
+    }
+} elseif ($Game -eq "windrose") {
+    if ($KeyVaultSecretName) {
+        if (-not $keyVaultName) { Write-Error "keyVault.name is empty in config." }
+        $ServerPass = (az keyvault secret show --vault-name $keyVaultName --name $KeyVaultSecretName --query value -o tsv)
+        if (-not $ServerPass) { Write-Error "Could not read secret from Key Vault." }
+    }
+    if (-not $ServerPass) {
+        Write-Error "ServerPass is required for Windrose (direct connection password). Use -ServerPass or -KeyVaultSecretName."
+    }
+    if ($ports.Count -eq 0) {
+        Write-Error "games.windrose.ports must include direct connection ports (TCP and UDP 3000) in azure-config.json."
     }
 }
 
@@ -195,9 +314,12 @@ if ($Game -eq "valheim") {
     if ($PortalsModifier)      { $envVars += "PORTALS_MODIFIER=$PortalsModifier" }
     if ($WorldSeed)            { $envVars += "WORLDSEED=$WorldSeed" }
 } elseif ($Game -eq "windrose") {
-    if ($WorldName) {
-        $envVars += "WORLD_NAME=$WorldName"
-    }
+    $envVars += "STEAM_UPDATE_ON_START=$autoUpdate"
+    $envVars += "STEAMCMD_FORCE_PLATFORM_WINDOWS=1"
+    $envVars += "XVFB_DISPLAY=:99"
+    $envVars += "WINDROSE_DIRECT_PORT=$WindroseDirectPort"
+    $envVars += "WINDROSE_ENSURE_DIRECT_CONFIG=0"
+    $secureEnvVars += "WINDROSE_SERVER_PASSWORD=$ServerPass"
 }
 
 # Validate required game options listed in config
@@ -253,16 +375,42 @@ if ($ports.Count -gt 0) {
 
 $containerCreateArgs += @("--location", $region)
 
-az @containerCreateArgs
+if ($Game -eq "windrose") {
+    $aciTemplate = Join-Path $env:TEMP "aci-$aciName-$(Get-Date -Format 'yyyyMMddHHmmss').json"
+    Write-Host "Creating Windrose ACI via container group template (TCP+UDP port $WindroseDirectPort)"
+    New-AciContainerGroupDeployFile `
+        -OutputPath $aciTemplate `
+        -ContainerGroupName $aciName `
+        -Location $region `
+        -Image $imageRef `
+        -Cpu $cpu `
+        -MemoryInGb $memoryInGb `
+        -StorageAccountName $storageAccountName `
+        -StorageAccountKey $storageKey `
+        -FileShareName $fileShareName `
+        -MountPath $mountPath `
+        -RegistryServer $acrLoginServer `
+        -RegistryUsername $registryUser `
+        -RegistryPassword $registryPass `
+        -Ports $ports `
+        -EnvironmentVariables $envVars `
+        -SecureEnvironmentVariables $secureEnvVars
+    az container create --resource-group $resourceGroup --file $aciTemplate
+    Remove-Item -Path $aciTemplate -Force -ErrorAction SilentlyContinue
+} else {
+    az @containerCreateArgs
+}
 
 $ip = (az container show --resource-group $resourceGroup --name $aciName --query ipAddress.ip -o tsv)
+$directPort = if ($Game -eq "windrose") { $WindroseDirectPort } else { if ($ports.Count -gt 0) { $ports[0].port } else { "" } }
 Write-Host ""
 Write-Host "=== $gameDisplayName server deployed ===" -ForegroundColor Green
 Write-Host "Public IP: $ip"
-if ($ports.Count -gt 0) {
-    Write-Host "Connect in-game: Join by IP -> $ip (port $($ports[0].port))"
-}
-if ($Game -eq "valheim") {
+if ($Game -eq "windrose") {
+    Write-Host "Connect: Direct IP -> $ip port $directPort (TCP+UDP), password from -ServerPass / Key Vault"
+    Write-Host "First start may take 15-30+ minutes (SteamCMD download + Wine prefix). Check: az container logs -g $resourceGroup -n $aciName --follow"
+} elseif ($ports.Count -gt 0) {
+    Write-Host "Connect in-game: Join by IP -> $ip (port $directPort)"
     Write-Host "Password: (the one you provided)"
 }
 Write-Host ""

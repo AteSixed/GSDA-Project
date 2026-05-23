@@ -62,6 +62,57 @@ if [ -z "${SERVER_EXE}" ]; then
   exit 1
 fi
 
+ensure_server_description() {
+  local sd_dir="${INSTALL_DIR}/R5"
+  local sd_file="${sd_dir}/ServerDescription.json"
+  local direct_port="${WINDROSE_DIRECT_PORT:-3000}"
+  local display_name="${SERVER_NAME:-Windrose Server}"
+  local password="${WINDROSE_SERVER_PASSWORD:-}"
+  local protected="false"
+
+  mkdir -p "${sd_dir}"
+
+  if [ -n "${password}" ]; then
+    protected="true"
+  fi
+  local password_escaped
+  password_escaped="$(printf '%s' "${password}" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+  local name_escaped
+  name_escaped="$(printf '%s' "${display_name}" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+
+  if [ -f "${sd_file}" ] && [ "${WINDROSE_ENSURE_DIRECT_CONFIG:-0}" != "1" ]; then
+    echo "ServerDescription.json present; leaving unchanged (set WINDROSE_ENSURE_DIRECT_CONFIG=1 to re-apply direct settings)."
+    return 0
+  fi
+
+  echo "Writing ServerDescription.json (direct connection port ${direct_port}, password protected: ${protected})"
+  cat >"${sd_file}" <<EOF
+{
+	"Version": 1,
+	"DeploymentId": "0.0.0.0",
+	"ServerDescription_Persistent": {
+		"PersistentServerId": "",
+		"InviteCode": "",
+		"IsPasswordProtected": ${protected},
+		"Password": "${password_escaped}",
+		"ServerName": "${name_escaped}",
+		"WorldIslandId": "",
+		"MaxPlayerCount": 8,
+		"UserSelectedRegion": "",
+		"P2pProxyAddress": "127.0.0.1",
+		"UseDirectConnection": true,
+		"DirectConnectionServerAddress": "127.0.0.1",
+		"DirectConnectionServerPort": ${direct_port},
+		"DirectConnectionProxyAddress": "0.0.0.0",
+		"AutoLoadLatestBackupIfHasBroken": true,
+		"CanLaunchMultipleServerInstances": false
+	}
+}
+EOF
+}
+
+ensure_server_description
+
 GAME_ROOT="${GAME_ROOT_OVERRIDE:-${INSTALL_DIR}}"
 export WINEPREFIX="${WINEPREFIX:-${INSTANCE_ROOT}/wineprefix}"
 export WINEARCH="${WINEARCH:-win64}"
