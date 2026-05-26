@@ -210,7 +210,7 @@ if ($Game -eq "valheim") {
         Write-Error "ServerPass is required for Windrose (direct connection password). Use -ServerPass or -KeyVaultSecretName."
     }
     if ($ports.Count -eq 0) {
-        Write-Error "games.windrose.ports must include direct connection ports (TCP and UDP 3000) in azure-config.json."
+        Write-Error "games.windrose.ports must include at least one direct connection port (e.g. TCP or UDP 3000) in azure-config.json."
     }
 }
 
@@ -310,6 +310,7 @@ if ($Game -eq "valheim") {
     # Force-platform flag often causes "Missing configuration" for 4129620 on Linux SteamCMD.
     $envVars += "STEAMCMD_FORCE_PLATFORM_WINDOWS=0"
     $envVars += "XVFB_DISPLAY=:99"
+    $envVars += "WINEDEBUG=-all"
     $envVars += "WINDROSE_DIRECT_PORT=$WindroseDirectPort"
     $envVars += "WINDROSE_ENSURE_DIRECT_CONFIG=0"
     $secureEnvVars += "WINDROSE_SERVER_PASSWORD=$ServerPass"

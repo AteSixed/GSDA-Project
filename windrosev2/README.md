@@ -4,6 +4,8 @@ Linux Docker image for the Windrose dedicated server (Steam app `4129620`), usin
 
 Parity target: a **Windows VM on the LAN** with direct IP join (port **3000**, password).
 
+Status note: local Docker/LAN testing is working, but the best network configuration for **internet-facing container hosting** is still being evaluated. In Azure Container Instances, the same public port cannot be exposed for both TCP and UDP, so ACI Windrose deploys are still experimental compared with the working VM baseline.
+
 ## Quick start
 
 ```powershell
@@ -86,6 +88,10 @@ Persistent data: `./data/<SERVER_DATA_SUBDIR>/` (if bind-mounted) or Docker volu
 - `docker-compose.yml` — run config, port 3000, volume
 - `ServerDescription.example.json` — LAN direct-join template
 - `.env.example` — instance subdir, port override
+
+## Logs and Wine noise
+
+By default `WINEDEBUG=-all` so ACI/Docker logs show SteamCMD and Unreal `Log*` lines, not Wine `fixme:` spam. To debug Wine issues, set in `.env` for example `WINEDEBUG=+err` or `WINEDEBUG=+fixme`, then restart the container.
 
 ## Useful commands
 

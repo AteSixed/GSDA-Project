@@ -13,15 +13,15 @@ This repo is the source for container images and the Azure deploy script. Game d
 | Path | Role |
 |------|------|
 | **`valheim/`** | Linux Docker image for a Valheim dedicated server. SteamCMD installs/updates the server on start; world data lives in a mounted volume. |
-| **`windrosev2/`** | Windrose dedicated server (Steam app 4129620) in Docker with Wine + Xvfb. Smoke-tested locally; see [`windrosev2/README.md`](windrosev2/README.md). |
-| **`azure/`** | PowerShell deploy script: build the game image, push to Azure Container Registry (ACR), create an ACI container with Azure Files for saves, expose UDP game port + public IP. |
+| **`windrosev2/`** | Windrose dedicated server (Steam app 4129620) in Docker with Wine + Xvfb. Smoke-tested locally; Azure container networking is still experimental. See [`windrosev2/README.md`](windrosev2/README.md). |
+| **`azure/`** | PowerShell deploy script: build the game image, push to Azure Container Registry (ACR), create an ACI container with Azure Files for saves, and expose game-specific public ports. |
 
 **Typical flows**
 
-- **Local lab / LAN** — `docker compose` under `valheim/` for quick testing without Azure cost.
-- **Internet-facing host** — `deploy-valheim-aci.ps1` builds from `valheim/`, pushes to your ACR, and runs the server in ACI with data on a file share.
+- **Local lab / LAN** — `docker compose` under `valheim/` or `windrosev2/` for quick testing without Azure cost.
+- **Internet-facing host** — `deploy-valheim-aci.ps1` builds from the game folder, pushes to your ACR, and runs the server in ACI with data on a file share. Valheim is the mature path; Windrose is still experimental there.
 
-The Azure script is game-aware (`valheim` today; `windrose` is configured for when that container is published). Each game’s Dockerfile and options live in its own folder.
+The Azure script is game-aware (`valheim` plus experimental `windrose`). Each game’s Dockerfile and options live in its own folder.
 
 ---
 
@@ -80,7 +80,9 @@ cd azure
 .\deploy-valheim-aci.ps1 -Game windrose -UserName "<userName>" -ServerName "<serverName>" -ServerPass "<serverPass>"
 ```
 
-Join with **direct IP** at `<publicIp>` **port 3000** (UDP on ACI) and `<serverPass>` — same model as a direct-connection VM. First start can take a long time while SteamCMD installs inside ACI.
+Join with **direct IP** at `<publicIp>` **port 3000 UDP** and `<serverPass>` — same model as a direct-connection VM. First start can take a long time while SteamCMD installs inside ACI.
+
+Windrose container hosting on Azure is still **experimental**. The server runs in ACI, but the best public-network configuration is still being evaluated; TCP-only and UDP-only direct-connect tests do not yet match the reliability of the working Windows VM baseline.
 
 More: [`azure/README.md`](azure/README.md) (Key Vault, image tags, world modifiers, stop/start/logs).
 

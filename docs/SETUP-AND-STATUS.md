@@ -1,4 +1,4 @@
-# Setup and status (as of 2026-04-20)
+# Setup and status (as of 2026-05-26)
 
 This document records what has been configured in **ServerAutomation**, what was tried for **Windrose** locally, how **Valheim** is deployed and updated in Azure, and the **Bazzite (`<hypervisorHost>`)** KVM hypervisor baseline. Paths are relative to the repo root unless stated otherwise.
 
@@ -8,14 +8,29 @@ This document records what has been configured in **ServerAutomation**, what was
 
 | Area | Path | Role |
 |------|------|------|
-| Windrose local POC | `windrose/` | Docker image: SteamCMD + WineHQ + GE-Proton; `entrypoint.sh` runs install + Proton or Wine |
+| Windrose current container | `windrosev2/` | Current Docker image for the Windows dedicated server under Wine + Xvfb; used for local LAN testing and experimental ACI deploys |
+| Windrose historical POC | local-only `windrose/`, `windrose.bak/` | Earlier experiments retained for reference but not part of the published repo path |
 | Valheim local | `valheim/` | Docker image + compose for local dedicated server |
-| Azure ACI deploy | `azure/deploy-valheim-aci.ps1`, `azure/azure-config.json` | Build/push game image to ACR, create ACI container group, mount Azure Files |
-| Azure docs | `azure/README.md` | First-time deploy, parameters, Key Vault |
+| Azure ACI deploy | `azure/deploy-valheim-aci.ps1`, `azure/azure-config.json` | Build/push game image to ACR, create ACI container group, mount Azure Files, expose one protocol per public port |
+| Azure docs | `azure/README.md` | First-time deploy, parameters, Key Vault, Windrose ACI notes |
+| Windrose smoke test | `docs/WINDROSE-CONTAINER-SMOKE-TEST.md` | Local Docker smoke-test checklist and pass result |
 
 ---
 
-## 2. Windrose (local Docker POC)
+### Current snapshot (2026-05-26)
+
+- **Local Windrose (`windrosev2/`)**: smoke-tested and working over LAN with **direct IP + password** on port **3000**.
+- **ACI Windrose**: deploys successfully and reaches real game logging, but the best public-network configuration is still being determined.
+- **ACI protocol limitation**: Azure Container Instances cannot expose **TCP 3000 and UDP 3000 together** on one public IP; tests have been run with **TCP-only** and **UDP-only**.
+- **TCP-only ACI result**: client reached a long load and logs showed **`Unexpected BL disconnect`** / no `PlayerController`.
+- **UDP-only ACI result**: client returned to menu faster and did not show the same disconnect in the retained log buffer.
+- **ACI runtime defaults for Windrose**: `STEAM_UPDATE_ON_START=0`, `STEAMCMD_FORCE_PLATFORM_WINDOWS=0`, `WINEPREFIX_USE_CONTAINER_TMP=1`, `WINEDEBUG=-all`, `WINDROSE_ENSURE_DIRECT_CONFIG=0`.
+- **Startup behavior**: ACI is much slower than the Windows VM baseline; logs show repeated slow `loadDB` / `makebak` tasks, and current evidence points more toward container / Wine / Azure Files overhead than sustained CPU saturation.
+- **Current recommendation**: use `windrosev2/` locally for LAN testing, keep the Windows VM as the reliable public-hosting reference, and treat Windrose on ACI as experimental.
+
+---
+
+## 2. Windrose historical container investigation notes
 
 ### Goal
 
@@ -321,7 +336,7 @@ export LIBVIRT_DEFAULT_URI=qemu:///system
 ### Windrose (local)
 
 ```powershell
-cd windrose
+cd windrosev2
 docker compose build
 docker compose up
 ```
@@ -345,6 +360,8 @@ virsh -c qemu:///system list --all
 ## 7. Security note
 
 Do **not** commit real passwords or Key Vault secret values into git. Keep secrets in `.env` (gitignored), Key Vault, or your secret manager.
+
+Focused `gitleaks` checks on committed history and the currently modified tracked files were clean as of **2026-05-26**. A raw `gitleaks dir .` scan of the whole local working tree was too noisy to use as a meaningful repo-level signal because it walked large local content outside the tracked repo surface.
 
 ---
 

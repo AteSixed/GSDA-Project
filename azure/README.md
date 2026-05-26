@@ -71,7 +71,15 @@ Example Windrose deployment (direct IP + password, port 3000 UDP):
 
 When the script finishes, it prints the **public IP**. Connect with **direct IP** (not invite code): `<public-ip>:3000` and the password from `-ServerPass`. First boot installs the game via SteamCMD inside the container (can take 15–30+ minutes); watch logs with `az container logs`.
 
-Windrose uses **8 GB** memory by default in config (`games.windrose.aci.memoryInGb`) and deploys via a container-group YAML template (UDP on port 3000; ACI cannot expose the same port for both TCP and UDP).
+Windrose uses **8 GB** memory by default in config (`games.windrose.aci.memoryInGb`) and deploys via a container-group YAML template. Set `games.windrose.ports` to **TCP or UDP** on port 3000 (not both — ACI rejects duplicate port numbers on one public IP).
+
+Current status: Windrose **does run** in ACI, but the best public-network configuration is still being determined. UDP-only and TCP-only direct-IP tests have both been tried; neither has yet matched the reliability of the native Windows VM reference, so treat ACI Windrose hosting as experimental for now.
+
+Current logging/runtime defaults for Windrose ACI:
+
+- `WINEDEBUG=-all` to keep container logs readable
+- `WINEPREFIX_USE_CONTAINER_TMP=1` because Azure Files did not behave well for a persistent Wine prefix
+- much slower startup than the Windows VM baseline; expect long `loadDB` / `makebak` phases before the server is really ready
 
 ### Game-specific options in config
 
@@ -92,7 +100,7 @@ Windrose config also includes SteamCMD metadata:
 ### Ports
 
 - **Valheim:** UDP **2456** (via `az container create`).
-- **Windrose:** UDP **3000** on ACI (via container group YAML). Azure does not allow the same port number for both TCP and UDP on one container group ([ACI limitation](https://stackoverflow.com/questions/61053139)); local Docker and a VM can expose both. If direct join fails on ACI, use your VM or test with TCP-only by changing `games.windrose.ports` to TCP.
+- **Windrose:** UDP **3000** on ACI (via container group YAML; example config). Azure does not allow the same port number for both TCP and UDP on one container group ([ACI limitation](https://stackoverflow.com/questions/61053139)); local Docker and a VM can expose both. If join fails, try switching `games.windrose.ports` to `TCP` and redeploy for comparison.
 
 ### Public IP
 

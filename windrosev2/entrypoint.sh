@@ -126,6 +126,8 @@ else
 fi
 export WINEARCH="${WINEARCH:-win64}"
 export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:-mscoree,mshtml=;winedbg.exe=d}"
+# Suppress Wine fixme/trace noise in container logs; set WINEDEBUG=+err (or +fixme) to debug.
+export WINEDEBUG="${WINEDEBUG:--all}"
 XVFB_RUN_SCREEN="${XVFB_RUN_SCREEN:--screen 0 1024x768x24}"
 
 echo "Executable: ${SERVER_EXE}"
@@ -139,7 +141,7 @@ export XDG_RUNTIME_DIR=/tmp/runtime-steam
 
 if [ ! -f "${WINEPREFIX}/system.reg" ]; then
   echo "Initializing wine prefix: ${WINEPREFIX}"
-  WINEDEBUG=-all wineboot -i 2>&1 | tee -a "${RUN_LOG}" || true
+  wineboot -i 2>&1 | tee -a "${RUN_LOG}" || true
 fi
 
 set +e
